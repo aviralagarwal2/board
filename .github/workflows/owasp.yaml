@@ -43,10 +43,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: CodeQL Init
+      - name: CodeQL Init (Auto-detect languages)
         uses: github/codeql-action/init@v3
-        with:
-          languages: auto   # auto-detect instead of forcing
 
       - uses: github/codeql-action/autobuild@v3
       - uses: github/codeql-action/analyze@v3
@@ -76,6 +74,7 @@ jobs:
         with:
           name: bandit-report
           path: bandit.sarif
+
 
   # Job 3: Dependency Scanning
   dependency-check:
