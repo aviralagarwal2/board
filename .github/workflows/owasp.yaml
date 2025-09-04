@@ -53,6 +53,7 @@ jobs:
         run: |
           pip install semgrep
           semgrep --config p/owasp-top-ten --sarif -o semgrep.sarif || echo '{"runs":[]}' > semgrep.sarif
+          jq '.' semgrep.sarif > semgrep.pretty.sarif && mv semgrep.pretty.sarif semgrep.sarif
       - uses: github/codeql-action/upload-sarif@v3
         continue-on-error: true
         with:
