@@ -3,6 +3,11 @@ name: OWASP Code Security Pipeline (Zero Secrets)
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+  security-events: write   # required for SARIF upload
+  actions: read
+
 jobs:
   # Job 1: Secret Detection
   secret-detection:
@@ -22,12 +27,11 @@ jobs:
           ./gitleaks detect -c .gitleaks.toml --report-format sarif --report-path gitleaks.sarif || echo '{"runs":[]}' > gitleaks.sarif
 
       - uses: github/codeql-action/upload-sarif@v3
-        if: github.event_name != 'pull_request' # avoid fork issues
+        continue-on-error: true
         with:
           sarif_file: gitleaks.sarif
 
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: gitleaks-report
           path: gitleaks.sarif
@@ -42,7 +46,7 @@ jobs:
       - name: CodeQL Init
         uses: github/codeql-action/init@v3
         with:
-          languages: javascript, python, java, go
+          languages: auto   # auto-detect instead of forcing
 
       - uses: github/codeql-action/autobuild@v3
       - uses: github/codeql-action/analyze@v3
@@ -51,14 +55,11 @@ jobs:
         run: |
           pip install semgrep
           semgrep --config p/owasp-top-ten --sarif -o semgrep.sarif || echo '{"runs":[]}' > semgrep.sarif
-
       - uses: github/codeql-action/upload-sarif@v3
-        if: github.event_name != 'pull_request'
+        continue-on-error: true
         with:
           sarif_file: semgrep.sarif
-
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: semgrep-report
           path: semgrep.sarif
@@ -67,14 +68,11 @@ jobs:
         run: |
           pip install bandit
           bandit -r . -f sarif -o bandit.sarif || echo '{"runs":[]}' > bandit.sarif
-
       - uses: github/codeql-action/upload-sarif@v3
-        if: github.event_name != 'pull_request'
+        continue-on-error: true
         with:
           sarif_file: bandit.sarif
-
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: bandit-report
           path: bandit.sarif
@@ -90,14 +88,11 @@ jobs:
         run: |
           pip install pip-audit
           pip-audit -f sarif -o pip-audit.sarif || echo '{"runs":[]}' > pip-audit.sarif
-
       - uses: github/codeql-action/upload-sarif@v3
-        if: github.event_name != 'pull_request'
+        continue-on-error: true
         with:
           sarif_file: pip-audit.sarif
-
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: pip-audit-report
           path: pip-audit.sarif
@@ -107,10 +102,10 @@ jobs:
           if [ -f "package.json" ]; then
             npm install --no-fund --no-audit
             npm audit --json > npm-audit.json || echo '{}' > npm-audit.json
+          else
+            echo '{}' > npm-audit.json
           fi
-
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: npm-audit-report
           path: npm-audit.json
@@ -131,7 +126,6 @@ jobs:
           else
             echo '{}' > licenses.json
           fi
-
       - uses: actions/upload-artifact@v4
         with:
           name: license-report
@@ -147,15 +141,12 @@ jobs:
       - name: Run Checkov
         run: |
           pip install checkov
-          checkov -d . -o sarif --quiet > checkov.sarif || echo '{"runs":[]}' > checkov.sarif
-
+          checkov -d . -o sarif -o-file checkov.sarif || echo '{"runs":[]}' > checkov.sarif
       - uses: github/codeql-action/upload-sarif@v3
-        if: github.event_name != 'pull_request'
+        continue-on-error: true
         with:
           sarif_file: checkov.sarif
-
       - uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: checkov-report
           path: checkov.sarif
@@ -176,7 +167,6 @@ jobs:
           echo "✅ Dependency scan done" >> summary.md
           echo "✅ License compliance checked" >> summary.md
           echo "✅ IaC scan done" >> summary.md
-
       - uses: actions/upload-artifact@v4
         with:
           name: security-summary
