@@ -157,16 +157,76 @@ jobs:
     needs: [secret-detection, sast-analysis, dependency-check, license-check, iac-security]
     if: always()
     steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: reports
+
       - name: Generate summary
         run: |
-          echo "# 🔒 Security Scan Summary" > summary.md
-          echo "" >> summary.md
-          echo "✅ Secret scan done" >> summary.md
-          echo "✅ SAST scan done" >> summary.md
-          echo "✅ Dependency scan done" >> summary.md
-          echo "✅ License compliance checked" >> summary.md
-          echo "✅ IaC scan done" >> summary.md
+          {
+            echo "# 🔒 Security Scan Summary"
+            echo ""
+
+            # Secret detection (Gitleaks)
+            if [ -f reports/gitleaks-report/gitleaks.sarif ]; then
+              gitleaks_count=$(jq '[.runs[].results[]] | length' reports/gitleaks-report/gitleaks.sarif 2>/dev/null || echo 0)
+              echo "## 🔍 Secret Detection"
+              echo "- Findings: $gitleaks_count"
+              echo ""
+            fi
+
+            # SAST - Semgrep
+            if [ -f reports/semgrep-report/semgrep.sarif ]; then
+              semgrep_count=$(jq '[.runs[].results[]] | length' reports/semgrep-report/semgrep.sarif 2>/dev/null || echo 0)
+              echo "## 🛡️ Semgrep (OWASP rules)"
+              echo "- Findings: $semgrep_count"
+              echo ""
+            fi
+
+            # SAST - Bandit
+            if [ -f reports/bandit-report/bandit.sarif ]; then
+              bandit_count=$(jq '[.runs[].results[]] | length' reports/bandit-report/bandit.sarif 2>/dev/null || echo 0)
+              echo "## 🐍 Bandit (Python)"
+              echo "- Findings: $bandit_count"
+              echo ""
+            fi
+
+            # Dependency - pip-audit
+            if [ -f reports/pip-audit-report/pip-audit.sarif ]; then
+              pip_count=$(jq '[.runs[].results[]] | length' reports/pip-audit-report/pip-audit.sarif 2>/dev/null || echo 0)
+              echo "## 📦 Python Dependencies (pip-audit)"
+              echo "- Vulnerabilities: $pip_count"
+              echo ""
+            fi
+
+            # Dependency - npm audit
+            if [ -f reports/npm-audit-report/npm-audit.json ]; then
+              npm_count=$(jq '.metadata.vulnerabilities.total // 0' reports/npm-audit-report/npm-audit.json 2>/dev/null || echo 0)
+              echo "## 📦 Node.js Dependencies (npm audit)"
+              echo "- Vulnerabilities: $npm_count"
+              echo ""
+            fi
+
+            # License compliance
+            if [ -f reports/license-report/licenses.json ]; then
+              gpl_count=$(jq '[.[] | select(.licenses | test("GPL|AGPL"; "i"))] | length' reports/license-report/licenses.json 2>/dev/null || echo 0)
+              echo "## 📄 License Compliance"
+              echo "- GPL/AGPL licenses: $gpl_count"
+              echo ""
+            fi
+
+            # IaC - Checkov
+            if [ -f reports/checkov-report/checkov.sarif ]; then
+              checkov_count=$(jq '[.runs[].results[]] | length' reports/checkov-report/checkov.sarif 2>/dev/null || echo 0)
+              echo "## 🏗️ Infrastructure as Code (Checkov)"
+              echo "- Findings: $checkov_count"
+              echo ""
+            fi
+
+            echo "> ✅ Detailed reports are available in workflow artifacts."
+          } >> $GITHUB_STEP_SUMMARY
+
       - uses: actions/upload-artifact@v4
         with:
           name: security-summary
-          path: summary.md
+          path: reports
