@@ -47,3 +47,17 @@ jobs:
             reports/dependency-check-report.json
             reports/dependency-check-report.pretty.json
             reports/dependency-check-report.sarif
+
+  summary:
+    name: 📊 Scan Summary
+    runs-on: ubuntu-latest
+    needs: dependency-check
+    if: always()
+    steps:
+      - name: Show Summary in Actions UI
+        run: |
+          echo "## 📦 OWASP Dependency-Check Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Reports generated: HTML, JSON, Pretty JSON, XML, SARIF" >> $GITHUB_STEP_SUMMARY
+          echo "- 📂 Download full reports from the workflow artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- ⚠️ The build fails if vulnerabilities with CVSS ≥ 7 were found" >> $GITHUB_STEP_SUMMARY
