@@ -1,31 +1,52 @@
-name: OWASP Dependency Scan
+name: OWASP Dependency Check
 
 on:
   workflow_dispatch:
 
 jobs:
   dependency-check:
-    name: 📦 OWASP Dependency Check
+    name: 🛡️ OWASP Dependency Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install OWASP Dependency Check
-        run: |
-          wget https://github.com/jeremylong/DependencyCheck/releases/download/v10.0.3/dependency-check-10.0.3-release.zip
-          unzip dependency-check-10.0.3-release.zip -d $HOME/dependency-check
-          export PATH=$HOME/dependency-check/dependency-check/bin:$PATH
-          echo "PATH=$HOME/dependency-check/dependency-check/bin:$PATH" >> $GITHUB_ENV
-
-      - name: Run Dependency Check
-        run: |
-          dependency-check.sh \
-            --project "MyRepo" \
-            --scan . \
-            --format JSON \
-            --out dependency-check-report.json || true
-
-      - uses: actions/upload-artifact@v4
+      - name: Run OWASP Dependency-Check
+        uses: dependency-check/Dependency-Check_Action@main
         with:
-          name: dependency-check-report
-          path: dependency-check-report.json
+          project: "my-project"
+          format: "ALL" # Generates JSON, XML, SARIF, HTML
+          out: "reports"
+          args: >
+            --disableYarnAudit
+            --disableNodeAudit
+
+      - name: Pretty Print Reports
+        run: |
+          mkdir -p reports
+
+          # JSON
+          if [ -f reports/dependency-check-report.json ]; then
+            jq '.' reports/dependency-check-report.json | tee reports/dependency-check-report.pretty.json > /dev/null
+          else
+            echo '{}' | tee reports/dependency-check-report.pretty.json > /dev/null
+          fi
+
+          # SARIF
+          if [ -f reports/dependency-check-report.sarif ]; then
+            jq '.' reports/dependency-check-report.sarif | tee reports/dependency-check-report.pretty.sarif > /dev/null
+          else
+            echo '{"runs":[]}' | tee reports/dependency-check-report.pretty.sarif > /dev/null
+          fi
+
+          # XML
+          if [ -f reports/dependency-check-report.xml ]; then
+            xmllint --format reports/dependency-check-report.xml | tee reports/dependency-check-report.pretty.xml > /dev/null
+          else
+            echo "<report/>" | tee reports/dependency-check-report.pretty.xml > /dev/null
+          fi
+
+      - name: Upload Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-reports
+          path: reports/
