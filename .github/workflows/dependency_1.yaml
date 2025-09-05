@@ -26,8 +26,21 @@ jobs:
             --exclude "**/test/**"
             --exclude "**/.git/**"
 
-      - name: Upload Dependency-Check Report
+      - name: Pretty Print JSON Report
+        run: |
+          if [ -f reports/dependency-check-report.json ]; then
+            jq '.' reports/dependency-check-report.json > reports/dependency-check-report.pretty.json
+          else
+            echo '{}' > reports/dependency-check-report.pretty.json
+          fi
+
+      - name: Upload Dependency-Check Reports
         uses: actions/upload-artifact@v4
         with:
           name: dependency-check-report
-          path: reports
+          path: |
+            reports/dependency-check-report.html
+            reports/dependency-check-report.xml
+            reports/dependency-check-report.json
+            reports/dependency-check-report.pretty.json
+            reports/dependency-check-report.sarif
