@@ -20,6 +20,11 @@ jobs:
             --disableYarnAudit
             --disableNodeAudit
 
+      - name: Fix Permissions
+        run: |
+          sudo chown -R $USER:$USER reports
+          chmod -R u+rw reports
+
       - name: Pretty Print Reports
         run: |
           mkdir -p reports
