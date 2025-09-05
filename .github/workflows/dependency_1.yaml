@@ -26,6 +26,9 @@ jobs:
             --exclude "**/test/**"
             --exclude "**/.git/**"
 
+      - name: Fix permissions
+        run: sudo chmod -R 777 reports
+
       - name: Pretty Print JSON Report
         run: |
           if [ -f reports/dependency-check-report.json ]; then
