@@ -1,0 +1,31 @@
+name: OWASP Dependency Scan
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dependency-check:
+    name: 📦 OWASP Dependency Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install OWASP Dependency Check
+        run: |
+          wget https://github.com/jeremylong/DependencyCheck/releases/download/v10.0.3/dependency-check-10.0.3-release.zip
+          unzip dependency-check-10.0.3-release.zip -d $HOME/dependency-check
+          export PATH=$HOME/dependency-check/dependency-check/bin:$PATH
+          echo "PATH=$HOME/dependency-check/dependency-check/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Run Dependency Check
+        run: |
+          dependency-check.sh \
+            --project "MyRepo" \
+            --scan . \
+            --format JSON \
+            --out dependency-check-report.json || true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-report
+          path: dependency-check-report.json
